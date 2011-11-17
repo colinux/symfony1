@@ -263,7 +263,8 @@ abstract class Doctrine_Hydrator_Graph extends Doctrine_Hydrator_Abstract
                         $prev[$parent][$relationAlias] = $element;
                     }
                 }
-                if ($prev[$parent][$relationAlias] !== null) {
+                if ($prev[$parent][$relationAlias] !== null &&
+                  !$prev[$parent][$relationAlias] instanceof Doctrine_Null) {
                     $coll =& $prev[$parent][$relationAlias];
                     $this->setLastElement($prev, $coll, $index, $dqlAlias, $oneToOne);
                 }
