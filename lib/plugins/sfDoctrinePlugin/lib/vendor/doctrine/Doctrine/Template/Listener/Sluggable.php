@@ -180,12 +180,30 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
             $whereParams = array_merge($whereParams, array_values($identifier));
         }
 
+        $components = array();
         foreach ($this->_options['uniqueBy'] as $uniqueBy) {
-            if (is_null($record->$uniqueBy)) {
-                $whereString .= ' AND r.'.$uniqueBy.' IS NULL';
+
+            // unique field is in a relation table
+            if (strpos($uniqueBy, '.') !== false) {
+              list ($relation, $field) = explode('.', $uniqueBy);
+              if (!isset($components[$relation])) {
+                $components[$relation] = 'r'.count($components);
+              }
+
+              $alias = $components[$relation];
+            }
+            else {
+              $alias = 'r';
+              $field = $uniqueBy;
+            }
+
+            if ($alias == 'r' && is_null($record->$field)) {
+                $whereString .= ' AND r.'.$field.' IS NULL';
+            } else if ($alias != 'r' && (!$record->hasReference($relation) || is_null($record->$relation->$field))) {
+                $whereString .= ' AND '.$alias.'.'.$field.' IS NULL';
             } else {
-                $whereString .= ' AND r.'.$uniqueBy.' = ?';
-                $value = $record->$uniqueBy;
+                $whereString .= ' AND '.$alias.'.'.$field.' = ?';
+                $value = $alias == 'r' ? $record->$field : $record->$relation->$field;
                 if ($value instanceof Doctrine_Record) {
                     $value = current((array) $value->identifier());
                 }
@@ -201,6 +219,11 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
             ->select('r.' . $name)
             ->where($whereString , $whereParams)
             ->setHydrationMode(Doctrine_Core::HYDRATE_ARRAY);
+
+        foreach ($components as $relation => $alias)
+        {
+          $query->leftJoin('r.' . $relation . ' '.$alias);
+        }
 
         // We need to introspect SoftDelete to check if we are not disabling unique records too
         if ($table->hasTemplate('Doctrine_Template_SoftDelete')) {
