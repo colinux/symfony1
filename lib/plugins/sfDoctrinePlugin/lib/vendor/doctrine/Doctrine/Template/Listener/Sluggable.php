@@ -186,6 +186,16 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
             // unique field is in a relation table
             if (strpos($uniqueBy, '.') !== false) {
               list ($relation, $field) = explode('.', $uniqueBy);
+
+              // useful with inheritance + translation: we need to have the real component name, so it's dynamic
+              // Ex: sluggable on Foo + i18n + inheritance Bar = FooBarTranslation sluggable record,
+              // but we need the FooBar component name to access the record with the relation.
+              // So you need to define the sluggable relation field like this : %TRANSLATION_OWNER_CLASS%.your_field_id
+              if ($relation == '%TRANSLATION_OWNER_CLASS%') {
+                $relation = str_replace('Translation', '', $table->getComponentName());
+              }
+
+
               if (!isset($components[$relation])) {
                 $components[$relation] = 'r'.count($components);
               }
