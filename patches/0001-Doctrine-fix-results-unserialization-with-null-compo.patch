@@ -1,0 +1,27 @@
+From 1c98d11fe4684af85c99ab1c28f013637532ccf2 Mon Sep 17 00:00:00 2001
+From: Colin Darie <colindarie@gmail.com>
+Date: Tue, 31 May 2011 20:29:24 +0200
+Subject: [PATCH] Doctrine: fix results unserialization with null components
+ as Doctrine_Null
+
+---
+ .../vendor/doctrine/Doctrine/Hydrator/Graph.php    |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Hydrator/Graph.php b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Hydrator/Graph.php
+index b1fa90a..26cd853 100644
+--- a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Hydrator/Graph.php
++++ b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Hydrator/Graph.php
+@@ -263,7 +263,8 @@ abstract class Doctrine_Hydrator_Graph extends Doctrine_Hydrator_Abstract
+                         $prev[$parent][$relationAlias] = $element;
+                     }
+                 }
+-                if ($prev[$parent][$relationAlias] !== null) {
++                if ($prev[$parent][$relationAlias] !== null &&
++                  !$prev[$parent][$relationAlias] instanceof Doctrine_Null) {
+                     $coll =& $prev[$parent][$relationAlias];
+                     $this->setLastElement($prev, $coll, $index, $dqlAlias, $oneToOne);
+                 }
+-- 
+1.7.5.3
+

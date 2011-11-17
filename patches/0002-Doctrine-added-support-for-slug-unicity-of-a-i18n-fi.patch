@@ -1,0 +1,116 @@
+From 7fcc82ca8bd28e06bc5a5a77fe1b534649e6a9bd Mon Sep 17 00:00:00 2001
+From: Colin Darie <colindarie@gmail.com>
+Date: Wed, 1 Jun 2011 16:14:24 +0200
+Subject: [PATCH] Doctrine: added support for slug unicity of a i18n field on
+ a parent relation
+
+If you have slugs for an I18n field but you want consider unicity with a
+field contained in the component itself (not the translation), use the
+uniqueBy field declaration with the form "relation_name.field"
+
+Example:
+Article:
+  actAs:
+    I18n:
+      fields: [title]
+      actAs:
+        Sluggable:
+          fields: [title]
+          uniqueBy: [Article.category_id, lang]
+          [...]
+  columns:
+    id:
+    category_id:
+    title:
+    [...]
+
+Very important:
+Since the Translation records need to access to the main record, before
+invoking save() methods you need to manually reference the main
+component into each Translation record.
+
+$Article = new Article;
+$Article->fromArray(array()....);
+$Article->Translation['en']->title = 'article title';
+$Article->Translation['fr']->title = "titre de l'article";
+$Article->Translation['en']->Article = $Article;
+$Article->Translation['fr']->Article = $Article;
+$Article->save();
+
+Better, you can use pre-hooks like this:
+
+public function preInsert($event)
+{
+  $this->setTranslationSluggableComponent();
+}
+
+public function preUpdate($event)
+{
+  $this->setTranslationSluggableComponent();
+}
+
+public function setTranslationSluggableComponent()
+{
+  $component_name = $this->getTable()->getComponentName();
+  foreach ($this->get('Translation') as $T) {
+    $T->set($component_name, $this);
+  }
+}
+---
+ .../Doctrine/Template/Listener/Sluggable.php       |   31 +++++++++++++++++--
+ 1 files changed, 27 insertions(+), 4 deletions(-)
+
+diff --git a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
+index cc627a0..88018ac 100644
+--- a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
++++ b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
+@@ -180,12 +180,30 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
+             $whereParams = array_merge($whereParams, array_values($identifier));
+         }
+ 
++        $components = array();
+         foreach ($this->_options['uniqueBy'] as $uniqueBy) {
+-            if (is_null($record->$uniqueBy)) {
+-                $whereString .= ' AND r.'.$uniqueBy.' IS NULL';
++
++            // unique field is in a relation table
++            if (strpos($uniqueBy, '.') !== false) {
++              list ($relation, $field) = explode('.', $uniqueBy);
++              if (!isset($components[$relation])) {
++                $components[$relation] = 'r'.count($components);
++              }
++
++              $alias = $components[$relation];
++            }
++            else {
++              $alias = 'r';
++              $field = $uniqueBy;
++            }
++
++            if ($alias == 'r' && is_null($record->$field)) {
++                $whereString .= ' AND r.'.$field.' IS NULL';
++            } else if ($alias != 'r' && (!$record->hasReference($relation) || is_null($record->$relation->$field))) {
++                $whereString .= ' AND '.$alias.'.'.$field.' IS NULL';
+             } else {
+-                $whereString .= ' AND r.'.$uniqueBy.' = ?';
+-                $value = $record->$uniqueBy;
++                $whereString .= ' AND '.$alias.'.'.$field.' = ?';
++                $value = $alias == 'r' ? $record->$field : $record->$relation->$field;
+                 if ($value instanceof Doctrine_Record) {
+                     $value = current((array) $value->identifier());
+                 }
+@@ -202,6 +220,11 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
+             ->where($whereString , $whereParams)
+             ->setHydrationMode(Doctrine_Core::HYDRATE_ARRAY);
+ 
++        foreach ($components as $relation => $alias)
++        {
++          $query->leftJoin('r.' . $relation . ' '.$alias);
++        }
++
+         // We need to introspect SoftDelete to check if we are not disabling unique records too
+         if ($table->hasTemplate('Doctrine_Template_SoftDelete')) {
+ 	        $softDelete = $table->getTemplate('Doctrine_Template_SoftDelete');
+-- 
+1.7.5.3
+

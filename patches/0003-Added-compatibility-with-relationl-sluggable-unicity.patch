@@ -1,0 +1,76 @@
+From 16e3ab204429235b0264dbb22dfd9f6142bdd186 Mon Sep 17 00:00:00 2001
+From: Colin Darie <colindarie@gmail.com>
+Date: Tue, 26 Jul 2011 01:05:53 +0200
+Subject: [PATCH] Added compatibility with relationl sluggable unicity field
+ if the relation has i18n + inheritance behaviors
+
+Imagine we have a schema like this:
+
+Foo:
+  actAs:
+    I18n:
+      fields: [name]
+      actAs:
+        Sluggable:
+          [...]
+          fields: [name]
+          uniqueBy: [%TRANSLATION_OWNER_CLASS%.master_id, lang]
+  columns:
+    id: [...]
+    master_id: [...]
+
+FooBar:
+  inheritance:
+    extends: Foo
+    type: column_aggregation
+    [...]
+
+FooBaz:
+  inheritance:
+    extends: Foo
+    type: column_aggregation
+    [...]
+
+You want a slug unicity on the i18n record with the lang and the
+master_id of the main component (Foo). However, with inheritance you
+can't define all relation names (FooBar.master_id, FooBaz.master_id), so
+you need to use the special %TRANSLATION_OWNER_CLASS% keyword which
+replace the right component name for each subclass for you.
+
+This is probably not the most elegant way to achieve this, but I
+couldn't figure another method in a short time :/
+---
+ .../Doctrine/Template/Listener/Sluggable.php       |   12 +++++++++++-
+ 1 files changed, 11 insertions(+), 1 deletions(-)
+
+diff --git a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
+index 88018ac..300d82b 100644
+--- a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
++++ b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
+@@ -186,6 +186,16 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
+             // unique field is in a relation table
+             if (strpos($uniqueBy, '.') !== false) {
+               list ($relation, $field) = explode('.', $uniqueBy);
++
++              // useful with inheritance + translation: we need to have the real component name, so it's dynamic
++              // Ex: sluggable on Foo + i18n + inheritance Bar = FooBarTranslation sluggable record,
++              // but we need the FooBar component name to access the record with the relation.
++              // So you need to define the sluggable relation field like this : %TRANSLATION_OWNER_CLASS%.your_field_id
++              if ($relation == '%TRANSLATION_OWNER_CLASS%') {
++                $relation = str_replace('Translation', '', $table->getComponentName());
++              }
++
++
+               if (!isset($components[$relation])) {
+                 $components[$relation] = 'r'.count($components);
+               }
+@@ -269,4 +279,4 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
+ 
+         return  $slug;
+     }
+-}
+\ No newline at end of file
++}
+-- 
+1.7.5.4
+
