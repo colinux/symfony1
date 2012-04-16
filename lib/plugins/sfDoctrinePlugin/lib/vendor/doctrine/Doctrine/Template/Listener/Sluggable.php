@@ -201,6 +201,13 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
               }
 
               $alias = $components[$relation];
+
+              // remove the inherintance map if requested
+              if ($this->_options['uniqueIgnoreInheritanceMap']) {
+                $componentTable = $table->getRelation($relation)->getTable();;
+                $originalInheritanceMap[$componentTable->getComponentName()] = $componentTable->getOption('inheritanceMap');
+                $componentTable->setOption('inheritanceMap', array());
+              }
             }
             else {
               $alias = 'r';
@@ -257,6 +264,14 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
 
         // Change indexby back
         $table->bindQueryPart('indexBy', $originalIndexBy);
+
+        // Change inheritance map back
+        if (isset($originalInheritanceMap)) {
+          foreach ($originalInheritanceMap as $component => $map) {
+            $componentTable = Doctrine_Core::getTable($component);
+            $componentTable->setOption('inheritanceMap', $map);
+          }
+        }
 
         $similarSlugs = array();
         foreach ($similarSlugResult as $key => $value) {

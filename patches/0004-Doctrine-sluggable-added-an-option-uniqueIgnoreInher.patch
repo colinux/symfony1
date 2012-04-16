@@ -1,0 +1,95 @@
+From 749f1f3ec7279a7d39ba70cd2ce2899ef99e73d5 Mon Sep 17 00:00:00 2001
+From: Colin Darie <colindarie@gmail.com>
+Date: Mon, 16 Apr 2012 20:42:31 +0200
+Subject: [PATCH] Doctrine/sluggable: added an option
+ "uniqueIgnoreInheritanceMap" to generate unique slugs in a
+ relation
+
+This can be used if the slug is for an i18n field while the "parent"
+component has inheritance: if you want to have unique slugs for all
+values of keyValue, use uniqueIgnoreInheritanceMap: true.
+
+Ex:
+Vehicle:
+  actAs:
+    I18n:
+      fields: [name]
+      length: 5
+      actAs:
+        Sluggable:
+          fields: [name]
+          length: 120
+          uniqueBy: [Vehicle.category_id, lang]
+          uniqueIndex: false
+          uniqueIgnoreInheritanceMap: true
+....
+
+VehicleCar:
+  inheritance:
+    extends: Vehicle
+    type: column_aggregation
+    keyField: vehicle_type
+    keyValue: car
+
+VehicleMoto:
+  inheritance:
+    extends: Vehicle
+    type: column_aggregation
+    keyField: vehicle_type
+    keyValue: moto
+
+The slugs will be unique by category_id + lang, for all vehicle table
+(car and moto).
+---
+ .../doctrine/Doctrine/Template/Listener/Sluggable.php   |   15 +++++++++++++++
+ .../lib/vendor/doctrine/Doctrine/Template/Sluggable.php |    1 +
+ 2 files changed, 16 insertions(+)
+
+diff --git a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
+index 300d82b..d4a071c 100644
+--- a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
++++ b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Listener/Sluggable.php
+@@ -201,6 +201,13 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
+               }
+ 
+               $alias = $components[$relation];
++
++              // remove the inherintance map if requested
++              if ($this->_options['uniqueIgnoreInheritanceMap']) {
++                $componentTable = $table->getRelation($relation)->getTable();;
++                $originalInheritanceMap[$componentTable->getComponentName()] = $componentTable->getOption('inheritanceMap');
++                $componentTable->setOption('inheritanceMap', array());
++              }
+             }
+             else {
+               $alias = 'r';
+@@ -258,6 +265,14 @@ class Doctrine_Template_Listener_Sluggable extends Doctrine_Record_Listener
+         // Change indexby back
+         $table->bindQueryPart('indexBy', $originalIndexBy);
+ 
++        // Change inheritance map back
++        if (isset($originalInheritanceMap)) {
++          foreach ($originalInheritanceMap as $component => $map) {
++            $componentTable = Doctrine_Core::getTable($component);
++            $componentTable->setOption('inheritanceMap', $map);
++          }
++        }
++
+         $similarSlugs = array();
+         foreach ($similarSlugResult as $key => $value) {
+             $similarSlugs[$key] = strtolower($value[$name]);
+diff --git a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Sluggable.php b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Sluggable.php
+index 045019e..fc9a55c 100644
+--- a/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Sluggable.php
++++ b/lib/plugins/sfDoctrinePlugin/lib/vendor/doctrine/Doctrine/Template/Sluggable.php
+@@ -49,6 +49,7 @@ class Doctrine_Template_Sluggable extends Doctrine_Template
+         'fields'        =>  array(),
+         'uniqueBy'      =>  array(),
+         'uniqueIndex'   =>  true,
++        'uniqueIgnoreInheritanceMap' => false,
+         'canUpdate'     =>  false,
+         'builder'       =>  array('Doctrine_Inflector', 'urlize'),
+         'provider'      =>  null,
+-- 
+1.7.10
+

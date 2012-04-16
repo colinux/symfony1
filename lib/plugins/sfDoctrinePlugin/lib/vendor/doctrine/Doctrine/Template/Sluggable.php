@@ -49,6 +49,7 @@ class Doctrine_Template_Sluggable extends Doctrine_Template
         'fields'        =>  array(),
         'uniqueBy'      =>  array(),
         'uniqueIndex'   =>  true,
+        'uniqueIgnoreInheritanceMap' => false,
         'canUpdate'     =>  false,
         'builder'       =>  array('Doctrine_Inflector', 'urlize'),
         'provider'      =>  null,
