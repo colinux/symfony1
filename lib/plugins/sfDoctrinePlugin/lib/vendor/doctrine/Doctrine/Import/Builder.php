@@ -466,6 +466,10 @@ class Doctrine_Import_Builder extends Doctrine_Builder
                     $a[] = '\'foreignKeyName\' => ' . $this->varExport($relation['foreignKeyName']);
                 }
 
+                if (isset($relation['foreignConnection']) && $relation['foreignConnection']) {
+                    $a[] = '\'foreignConnection\' => ' . $this->varExport($relation['foreignConnection']);
+                }
+
                 if (isset($relation['orderBy']) && $relation['orderBy']) {
                     $a[] = '\'orderBy\' => ' . $this->varExport($relation['orderBy']);
                 }

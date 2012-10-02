@@ -707,7 +707,8 @@ class Doctrine_Table extends Doctrine_Configurable implements Countable
                     $def = array('name'         => $fkName,
                                  'local'        => $relation->getLocalColumnName(),
                                  'foreign'      => $relation->getForeignColumnName(),
-                                 'foreignTable' => $relation->getTable()->getTableName());
+                                 'foreignTable' => $relation->getTable()->getTableName(),
+                                 'foreignConnection' => $relation->getForeignConnection());
 
                     if ($integrity !== $emptyIntegrity) {
                         $def = array_merge($def, $integrity);

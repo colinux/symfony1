@@ -1028,9 +1028,21 @@ class Doctrine_Export extends Doctrine_Connection_Module
             $definition['foreign'] = array($definition['foreign']);
         }
 
+
+        if ($definition['foreignConnection'])
+        {
+            $manager = $this->conn->getManager();
+            $relationConnection = $manager->getConnection($definition['foreignConnection']);
+            $connInfo = $manager->parsePdoDsn($relationConnection->getOption('dsn'));
+            $definition['database'] = '`' . $relationConnection->quoteIdentifier($connInfo['dbname']).'`.';
+        }
+        else {
+            $definition['database'] = '';
+        }
+
         $sql .= implode(', ', array_map(array($this->conn, 'quoteIdentifier'), $definition['local']))
               . ') REFERENCES '
-              . $this->conn->quoteIdentifier($definition['foreignTable']) . '('
+              . $definition['database'] . '`' . $this->conn->quoteIdentifier($definition['foreignTable']) . '`('
               . implode(', ', array_map(array($this->conn, 'quoteIdentifier'), $definition['foreign'])) . ')';
 
         return $sql;

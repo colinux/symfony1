@@ -71,6 +71,7 @@ abstract class Doctrine_Relation implements ArrayAccess
                                   'owningSide'  => false, // whether this is the owning side
                                   'refClassRelationAlias' => null,
                                   'foreignKeyName' => null,
+                                  'foreignConnection' => null,
                                   'orderBy' => null
                                   );
 
@@ -377,6 +378,18 @@ abstract class Doctrine_Relation implements ArrayAccess
         }
         return $this['localTable']->getConnection()->generateUniqueRelationForeignKeyName($this);
     }
+
+
+    /**
+     * Get the name of the foreign connection. Used to build FK constraints across databases
+     *
+     * @return string $foreignConnection
+     */
+    public function getForeignConnection()
+    {
+        return $this->definition['foreignConnection'];
+    }
+
 
     /**
      * Get the relationship orderby SQL/DQL
