@@ -173,4 +173,22 @@ class sfOutputEscaperArrayDecorator extends sfOutputEscaperGetterDecorator imple
   {
     return $this->value[$key];
   }
+
+
+  /**
+   * Returns an array with escaped keys and values. Useful for using php fucntions expecting arrays.
+   *
+   * @return array The array with keys and values escaped
+   */
+  public function getEscapedArray()
+  {
+    $escaped = array();
+
+    foreach ($this->value as $key => $value) {
+       $escaped[sfOutputEscaper::escape($this->escapingMethod, $key)] =
+        sfOutputEscaper::escape($this->escapingMethod, $value);
+    }
+
+    return $escaped;
+  }
 }
