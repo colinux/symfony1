@@ -1149,7 +1149,16 @@ abstract class Doctrine_Query_Abstract
         $copy->free();
 
         if ($componentsBefore !== $componentsAfter) {
-            return array_diff_assoc($componentsAfter, $componentsBefore);
+            $diff = array();
+
+            foreach($componentsAfter as $key => $val) {
+                if(!isset($componentsBefore[$key])) {
+                    $diff[$key] = $val;
+                } elseif($componentsBefore[$key] != $val) {
+                    $diff[$key] = $val;
+                }
+            }
+            return $diff;
         } else {
             return $componentsAfter;
         }
