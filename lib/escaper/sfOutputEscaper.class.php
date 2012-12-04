@@ -89,7 +89,19 @@ abstract class sfOutputEscaper
     // Scalars are anything other than arrays, objects and resources.
     if (is_scalar($value))
     {
-      return call_user_func($escapingMethod, $value);
+      // avoid expensive calls to call_user_func() for standard escaping methods
+      // this can save hundreds of functions calls in some circumstances
+      switch($escapingMethod) {
+        case 'esc_entities':
+        case 'esc_specialchars':
+        case 'esc_raw':
+        case 'esc_js':
+        case 'esc_js_no_entities':
+          return $escapingMethod($value);
+
+        default:
+          return call_user_func($escapingMethod, $value);
+      }
     }
 
     if (is_array($value))
