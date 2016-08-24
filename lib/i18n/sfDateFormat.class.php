@@ -123,6 +123,17 @@ class sfDateFormat
 
     if ($isString)
     {
+      $split = explode(".", $time);
+
+      if (count($split) == 2 && $split[1] == "000000")
+      {
+        $time = $split[0];
+        $isString = (string) $time !== (string) (int) $time;
+      }
+    }
+
+    if ($isString)
+    {
       if (!$pattern)
       {
         if (strlen($time) == 10)
